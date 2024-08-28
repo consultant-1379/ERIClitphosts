@@ -1,0 +1,58 @@
+## LITPCDS-13759: 
+## Recreating a failed plan to update a network interface, will
+## result in additional host tasks being created all in the one phase
+add-plugins plugins/dummy_13759_plugin
+
+# Set up deployment
+litp create -p /software/profiles/rhel_6_2 -t os-profile -o name='sample-profile' path='/profiles/node-iso/'
+litp create -p /infrastructure/systems/system1 -t system -o system_name='SYS1'
+litp create -p /infrastructure/systems/system1/disks/disk0 -t disk -o name='disk0' size='1G' uuid='foo'
+litp create -p /infrastructure/systems/system1/controllers/c1 -t controller-base
+litp create -p /infrastructure/systems/system2 -t system -o system_name='SYS2'
+litp create -p /infrastructure/systems/system2/disks/disk0 -t disk -o name='sdb' size='1G' uuid='foo'
+litp create -p /infrastructure/systems/system2/controllers/c1 -t controller-base
+litp create -p /infrastructure/networking/networks/ms_network -t network -o name='mgmt' subnet='10.10.10.0/24' litp_management=true
+litp create -p /infrastructure/storage/storage_profiles/profile_1 -t storage-profile-base
+litp create -p /deployments/local -t deployment
+litp create -p /deployments/local/clusters/cluster1 -t cluster -o ha_manager='vcs'
+litp create -p /deployments/local/clusters/cluster1/nodes/node1 -t node -o hostname='node1'
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node1/system -s /infrastructure/systems/system1
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node1/os -s /software/profiles/rhel_6_2
+litp create -p /deployments/local/clusters/cluster1/nodes/node2 -t node -o hostname='node2'
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node2/system -s /infrastructure/systems/system2
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node2/os -s /software/profiles/rhel_6_2
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node1/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node2/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+
+# Set up network interfaces
+litp create -p /ms/network_interfaces/if0 -t eth -o macaddress=80:c1:6e:7a:7b:48 ipaddress=10.44.86.140 ipv6address=fdde:4d7e:d471:0002::836:140:010/64 network_name=mgmt device_name=eth0
+litp create -p /deployments/local/clusters/cluster1/nodes/node1/network_interfaces/if0 -t eth -o macaddress=90:c1:6e:7a:7b:48 ipaddress=10.44.86.141 ipv6address=fdde:4d7e:d471:0002::836:141:010/64 network_name=mgmt device_name=eth0
+litp create -p /deployments/local/clusters/cluster1/nodes/node2/network_interfaces/if0 -t eth -o macaddress=70:c1:6e:7a:7b:48 ipaddress=10.44.86.142 ipv6address=fdde:4d7e:d471:0002::836:142:010/64 network_name=mgmt device_name=eth0
+
+litp create_plan
+litp run_plan
+assertPlanState successful
+
+# Update macaddress on network interface
+litp update -p /ms/network_interfaces/if0 -o macaddress=2c:59:E5:3D:E3:DC
+
+# Fail this update task
+litp create_plan
+failConfigTask fooz ms1 /ms/network_interfaces/if0
+litp run_plan
+assertPlanState failed
+
+# The network interface is in an Updated state with APD=False
+assertState -p /ms/network_interfaces/if0 Updated
+assertAppliedPropertiesDeterminable -p /ms/network_interfaces/if0 False
+
+# Recreate failed plan, hosts tasks will all be in same plan
+litp create_plan
+
+assertPlanLength 1
+assertPhaseLength 0 4
+
+assertTask 0 fooz ms1 /ms/network_interfaces/if0
+assertTask 0 hosts::hostentry ms1 /ms/network_interfaces/if0
+assertTask 0 hosts::hostentry node1 /ms/network_interfaces/if0
+assertTask 0 hosts::hostentry node2 /ms/network_interfaces/if0

@@ -1,0 +1,46 @@
+runLitpScript two-node-std.inc
+
+#create alias-node config config on the MS
+litp create -t alias-node-config -p /ms/configs/alias_config
+
+#create an alias on the MS with IPv6 address that contains a prefix
+litp create -t alias -p /ms/configs/alias_config/aliases/foo-ms-alias1 -o address=fdde:4d7e:d471:1::835:90:101/64 alias_names="foo-ms-alias-1"
+litp create -t alias -p /ms/configs/alias_config/aliases/foo-ms-alias2 -o address=fdde:4d7e:d471:1::835:90:102/64 alias_names="foo-ms-alias-2"
+
+
+#create alias-cluster config
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_config
+
+#create an aliases with IPv6 address that contains a prefix
+litp create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias1 -o address=fdde:4d7e:d471:1::835:90:103/64 alias_names="foo-cluster-alias-1"
+litp create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias2 -o address=fdde:4d7e:d471:1::835:90:104/64 alias_names="foo-cluster-alias-2"
+
+assertState -p /ms/configs/alias_config/aliases/foo-ms-alias1 Initial
+assertState -p /ms/configs/alias_config/aliases/foo-ms-alias2 Initial
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias1 Initial
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias2 Initial
+
+litp create_plan
+litp run_plan
+
+assertPlanState successful
+assertState -p /ms/configs/alias_config/aliases/foo-ms-alias1 Applied
+assertState -p /ms/configs/alias_config/aliases/foo-ms-alias2 Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias1 Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias2 Applied
+
+litp remove -p /ms/configs/alias_config/aliases/foo-ms-alias1
+litp remove -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias1
+
+litp create_plan
+
+assertConfigTask ms1 hosts::hostentry _ms1_foo-ms-alias-1 /ms/configs/alias_config/aliases/foo-ms-alias1 ip=fdde:4d7e:d471:1::835:90:101 ensure=absent name="foo-ms-alias-1" comment='Created by LITP. Please do not edit'
+assertConfigTask node1 hosts::hostentry cluster1_node1_foo-cluster-alias-1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias1 ip=fdde:4d7e:d471:1::835:90:103 ensure=absent name="foo-cluster-alias-1" comment='Created by LITP. Please do not edit'
+assertConfigTask node2 hosts::hostentry cluster1_node2_foo-cluster-alias-1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias1 ip=fdde:4d7e:d471:1::835:90:103 ensure=absent name="foo-cluster-alias-1" comment='Created by LITP. Please do not edit'
+
+litp run_plan
+
+#assert plan was successful and both aliases items are removed.
+assertPlanState successful
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /ms/configs/alias_config/aliases/foo-ms-alias1
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias1

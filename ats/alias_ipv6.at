@@ -1,0 +1,9 @@
+
+litp create -p /deployments/local_vm -t deployment
+litp create -p /deployments/local_vm/clusters/cluster1 -t cluster
+litp create -p /deployments/local_vm/clusters/cluster1/configs/alias_config -t alias-cluster-config
+
+# no error for ipv6 addresses
+litp create -p /deployments/local_vm/clusters/cluster1/configs/alias_config/aliases/master1 -t alias -o alias_names="alias1" address="2001:0db8::ff00:0042:8329"
+
+litp create -p /deployments/local_vm/clusters/cluster1/configs/alias_config/aliases/master2 -t alias -o alias_names="alias2" address="2001:0db8:0000:0000:0000:ff00:0042:8329"

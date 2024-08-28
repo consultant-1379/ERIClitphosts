@@ -1,0 +1,36 @@
+# Remove And Add Node In Same Plan
+
+# Setup
+runLitpScript two-node-std.inc
+litp create_plan
+litp run_plan
+
+# Remove node2
+litp remove -p /deployments/site1/clusters/cluster1/nodes/node2
+
+# Create a new node
+litp create -p /infrastructure/systems/system3 -t system -o system_name='MN3VM'
+litp create -p /deployments/site1/clusters/cluster1/nodes/node3 -t node -o hostname='node3'
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/system -s /infrastructure/systems/system3
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/os -s /software/profiles/rhel_6
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp create -p /deployments/site1/clusters/cluster1/nodes/node3/network_interfaces/if0 -t network-interface -o network_name=nodes ipaddress=10.4.23.53
+
+litp create_plan
+#show show_plan
+
+# Assert tasks created to remove the "node2" host entry
+assertConfigTask ms1   hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 \
+    ip=10.4.23.52 ensure=absent name=node2 comment='Created by LITP. Please do not edit'
+assertConfigTask node1 hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 \
+    ip=10.4.23.52 ensure=absent name=node2 comment='Created by LITP. Please do not edit'
+
+# Assert tasks created for new "node3" host entry
+assertConfigTask ms1   hosts::hostentry node3 /deployments/site1/clusters/cluster1/nodes/node3/network_interfaces/if0 \
+    ip=10.4.23.53 ensure=present name=node3 comment='Created by LITP. Please do not edit'
+assertConfigTask node1 hosts::hostentry node3 /deployments/site1/clusters/cluster1/nodes/node3/network_interfaces/if0 \
+    ip=10.4.23.53 ensure=present name=node3 comment='Created by LITP. Please do not edit'
+
+litp run_plan
+#show show_plan
+assertPlanState successful

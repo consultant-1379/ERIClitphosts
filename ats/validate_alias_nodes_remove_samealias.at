@@ -1,0 +1,17 @@
+
+runLitpScript two-node-std.inc
+
+litp create -p /deployments/site1/clusters/cluster1/nodes/node1/configs/masteralias -t alias-node-config
+litp create -p /deployments/site1/clusters/cluster1/nodes/node1/configs/masteralias/aliases/master1 -t alias -o address=11.11.11.1 alias_names=master1
+
+litp create_plan
+litp run_plan
+
+# Add cluster config
+litp create -p /deployments/site1/clusters/cluster1/configs/masteralias -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster1/configs/masteralias/aliases/master1 -t alias -o address=11.11.11.1 alias_names=master1
+
+assertError --err_message 'Duplicate alias for master1 found' create_plan
+
+# Remove previous node config
+litp remove -p /deployments/site1/clusters/cluster1/nodes/node1/configs/masteralias

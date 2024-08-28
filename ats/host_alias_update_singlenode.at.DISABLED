@@ -1,0 +1,29 @@
+
+# Create two nodes in two clusters
+runLitpScript two-node-two-cluster.inc
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master -t alias -o alias_names="master1" address="11.11.11.1"
+
+litp create -p /deployments/site1/clusters/cluster2/configs/alias_config -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster2/configs/alias_config/aliases/master -t alias -o alias_names="master2" address="22.22.22.2"
+
+litp create_plan
+
+assertConfigTask node1 hosts::hostentry cluster1_node1_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master ip=11.11.11.1
+assertConfigTask node2 hosts::hostentry cluster2_node2_master2 /deployments/site1/clusters/cluster2/configs/alias_config/aliases/master ip=22.22.22.2
+
+litp run_plan
+
+
+# Update only cluster2 to point at different master alias
+litp update -p /deployments/site1/clusters/cluster2/configs/alias_config/aliases/master -o alias_names="master2" address="33.33.33.3"
+
+litp create_plan
+
+assertNoConfigTask node1 hosts::hostentry cluster1_node1_master2 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master
+assertConfigTask node2 hosts::hostentry cluster2_node2_master2 /deployments/site1/clusters/cluster2/configs/alias_config/aliases/master ip=33.33.33.3
+
+litp run_plan
+
+assertDirectoryContents run_plan_hosts_alias_update_singlenode/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/

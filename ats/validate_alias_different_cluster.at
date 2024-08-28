@@ -1,0 +1,29 @@
+
+runLitpScript two-node-std.inc
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 -t alias -o address="11.11.11.1" alias_names="master1"
+
+litp create_plan
+
+# Create other cluster
+litp create -p /infrastructure/systems/system3 -t system -o system_name='MN3VM'
+
+litp create -p /deployments/site1/clusters/cluster2 -t cluster
+litp create -p /deployments/site1/clusters/cluster2/nodes/node3 -t node -o hostname='node3'
+litp inherit -p /deployments/site1/clusters/cluster2/nodes/node3/system -s /infrastructure/systems/system3
+litp inherit -p /deployments/site1/clusters/cluster2/nodes/node3/os -s /software/profiles/rhel_6
+litp create -t network-interface -p /deployments/site1/clusters/cluster2/nodes/node3/network_interfaces/if0 -o network_name='nodes' ipaddress=10.4.23.53
+litp inherit -p /deployments/site1/clusters/cluster2/nodes/node3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+
+# Two IPs for same alias in different clusters
+litp create -p /deployments/site1/clusters/cluster2/configs/alias_config -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster2/configs/alias_config/aliases/master2 -t alias -o address="22.22.22.2" alias_names="master1"
+
+# No error on create_plan as duplicate addresses are allowed between clusters
+litp create_plan
+litp run_plan
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 Applied
+assertState -p /deployments/site1/clusters/cluster2/configs/alias_config Applied
+assertState -p /deployments/site1/clusters/cluster2/configs/alias_config/aliases/master2 Applied

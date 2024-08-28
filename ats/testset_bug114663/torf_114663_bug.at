@@ -1,0 +1,71 @@
+## TORF-114663
+add-plugins plugins/dummy_114663_plugin
+
+# Set up deployment
+litp create -p /software/profiles/rhel_6_2 -t os-profile -o name='sample-profile' path='/profiles/node-iso/'
+litp create -p /infrastructure/systems/system1 -t system -o system_name='SYS1'
+litp create -p /infrastructure/systems/system1/disks/disk0 -t disk -o name='disk0' size='1G' uuid='foo'
+litp create -p /infrastructure/systems/system1/controllers/c1 -t controller-base
+litp create -p /infrastructure/systems/system2 -t system -o system_name='SYS2'
+litp create -p /infrastructure/systems/system2/disks/disk0 -t disk -o name='sdb' size='1G' uuid='foo'
+litp create -p /infrastructure/systems/system2/controllers/c1 -t controller-base
+litp create -p /infrastructure/networking/networks/ms_network -t network -o name='mgmt' subnet='10.10.10.0/24' litp_management=true
+litp create -p /infrastructure/storage/storage_profiles/profile_1 -t storage-profile-base
+litp create -p /deployments/local -t deployment
+litp create -p /deployments/local/clusters/cluster1 -t cluster -o ha_manager='vcs'
+litp create -p /deployments/local/clusters/cluster1/nodes/node1 -t node -o hostname='node1'
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node1/system -s /infrastructure/systems/system1
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node1/os -s /software/profiles/rhel_6_2
+litp create -p /deployments/local/clusters/cluster1/nodes/node2 -t node -o hostname='node2'
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node2/system -s /infrastructure/systems/system2
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node2/os -s /software/profiles/rhel_6_2
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node1/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/local/clusters/cluster1/nodes/node2/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+
+# Set up network interfaces
+litp create -p /ms/network_interfaces/if0 -t eth -o macaddress=80:c1:6e:7a:7b:48 ipaddress=10.44.86.140 ipv6address=fdde:4d7e:d471:0002::836:140:010/64 network_name=mgmt device_name=eth0
+litp create -p /deployments/local/clusters/cluster1/nodes/node1/network_interfaces/if0 -t eth -o macaddress=90:c1:6e:7a:7b:48 ipaddress=10.44.86.141 ipv6address=fdde:4d7e:d471:0002::836:141:010/64 network_name=mgmt device_name=eth0
+litp create -p /deployments/local/clusters/cluster1/nodes/node2/network_interfaces/if0 -t eth -o macaddress=70:c1:6e:7a:7b:48 ipaddress=10.44.86.142 ipv6address=fdde:4d7e:d471:0002::836:142:010/64 network_name=mgmt device_name=eth0
+
+litp create_plan
+litp run_plan
+assertPlanState successful
+
+litp prepare_restore
+litp update -p /ms/network_interfaces/if0 -o macaddress=80:c1:6e:7a:7b:88
+
+assertState -p /deployments/local/clusters/cluster1/nodes/node1 Initial
+assertState -p /deployments/local/clusters/cluster1/nodes/node2 Initial
+assertState -p /ms Applied
+assertState -p /ms/network_interfaces/if0 Updated
+
+litp create_plan
+# show show_plan
+
+let __node1_install CallbackTask _cb_install_node /deployments/local/clusters/cluster1/nodes/node1
+let __node2_install CallbackTask _cb_install_node /deployments/local/clusters/cluster1/nodes/node2
+
+let __ms_node1_host_update ConfigTask ms1 hosts::hostentry node1 /deployments/local/clusters/cluster1/nodes/node1/network_interfaces/if0
+let __ms_node2_host_update ConfigTask ms1 hosts::hostentry node2 /deployments/local/clusters/cluster1/nodes/node2/network_interfaces/if0
+
+assertTaskBeforeTask __ms_node1_host_update __node1_install
+assertTaskBeforeTask __ms_node2_host_update __node2_install
+
+# The ConfigTasks that will create /etc/hosts entries on node1 are sorted
+# *AFTER* the task(s) that will reinstall it
+let __node1_node1_host_update ConfigTask node1 hosts::hostentry node1 /deployments/local/clusters/cluster1/nodes/node1/network_interfaces/if0
+let __node1_node2_host_update ConfigTask node1 hosts::hostentry node2 /deployments/local/clusters/cluster1/nodes/node2/network_interfaces/if0
+let __node1_ms_host_update ConfigTask node1 hosts::hostentry ms1 /ms/network_interfaces/if0
+#
+assertTaskBeforeTask __node1_install __node1_node1_host_update
+assertTaskBeforeTask __node1_install __node1_node2_host_update
+assertTaskBeforeTask __node1_install __node1_ms_host_update
+
+# Likewise for node2
+let __node2_node1_host_update ConfigTask node2 hosts::hostentry node1 /deployments/local/clusters/cluster1/nodes/node1/network_interfaces/if0
+let __node2_node2_host_update ConfigTask node2 hosts::hostentry node2 /deployments/local/clusters/cluster1/nodes/node2/network_interfaces/if0
+let __node2_ms_host_update ConfigTask node2 hosts::hostentry ms1 /ms/network_interfaces/if0
+#
+assertTaskBeforeTask __node2_install __node2_node1_host_update
+assertTaskBeforeTask __node2_install __node2_node2_host_update
+assertTaskBeforeTask __node2_install __node2_ms_host_update

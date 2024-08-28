@@ -1,0 +1,25 @@
+
+runLitpScript two-node-std.inc
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 -t alias -o alias_names="master1" address="11.11.11.1"
+
+litp create_plan
+
+assertConfigTask node1 hosts::hostentry cluster1_node1_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 ip=11.11.11.1 ensure=present name=master1
+assertConfigTask node2 hosts::hostentry cluster1_node2_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 ip=11.11.11.1 ensure=present name=master1
+
+litp run_plan
+
+assertDirectoryContents run_plan_hosts_alias_add_more/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master2 -t alias -o alias_names="master2" address="22.22.22.2"
+
+litp create_plan
+
+assertConfigTask node1 hosts::hostentry cluster1_node1_master2 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master2 ip=22.22.22.2 ensure=present name=master2
+assertConfigTask node2 hosts::hostentry cluster1_node2_master2 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master2 ip=22.22.22.2 ensure=present name=master2
+
+litp run_plan
+
+assertDirectoryContents run_plan_hosts_alias_add_more__after_update/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/

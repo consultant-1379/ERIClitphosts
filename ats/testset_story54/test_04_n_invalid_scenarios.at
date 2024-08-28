@@ -1,0 +1,54 @@
+##Test creates aliases with invalid scenarios and loads them at invalid places in the model
+
+runLitpScript two-node-std.inc
+
+#create alias cluster config
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_config
+
+#create alias
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliashostname -t alias -o address=122.122.54.53 alias_names=hostname
+litp create_plan
+assertPlanState initial
+
+#Create alias node config and create plan without an alias item
+litp create -p /ms/configs/alias_node_cfg -t alias-node-config
+assertError --err_type CardinalityError --err_message "Create plan failed: This collection requires a minimum of 1 items not marked for removal" --err_vpath "/ms/configs/alias_node_cfg/aliases" create_plan
+
+#remove alias node config
+litp remove -p /ms/configs/alias_node_cfg
+assertNone -p /ms/configs/alias_node_cfg
+
+# Create alias items with restricted alias name hostname
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname1 -t alias -o address=122.122.54.51 alias_names=localhost
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname2 -t alias -o address=122.122.54.52 alias_names=localhost.localdomain,puppet
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname3 -t alias -o address=122.122.54.53 alias_names=localhost6.localdomain6
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname4 -t alias -o address=122.122.54.54 alias_names=localhost4.localdomain4
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname5 -t alias -o address=122.122.54.56 alias_names=localhost6
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname6 -t alias -o address=122.122.54.56 alias_names=localhost4
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasMShostname -t alias -o address=122.122.54.53 alias_names=ms1
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasMN1hostname -t alias -o address=122.122.54.53 alias_names=node2
+
+let __err_a --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "ms1" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasMShostname'
+let __err_b --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "localhost" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname1'
+let __err_c --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "localhost.localdomain" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname2'
+let __err_d --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "puppet" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname2'
+let __err_e --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "localhost6.localdomain6" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname3'
+let __err_f --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "localhost4.localdomain4" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname4'
+let __err_g --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "localhost6" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname5'
+let __err_h --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "localhost4" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasname6'
+let __err_i --err_type ValidationError --err_property "alias_names" --err_message 'Create plan failed: Restricted alias name "node2" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasMN1hostname'
+
+assertError __err_a __err_b __err_c __err_d __err_e __err_f __err_g __err_h __err_i create_plan
+
+# create alias with invalid path and assert InvalidLocationError
+assertError --err_type InvalidLocationError --err_message 'Path not found' create -p /deployments/site1/clusters/cluster1/configs/invalid/aliases/invalidaliasurl -t alias -o address='122.122.54.54' alias_names='master'
+
+# create alias without passing alias_names and assert MissingRequiredPropertyError
+assertError --err_type MissingRequiredPropertyError --err_property "alias_names" --err_message 'ItemType "alias" is required to have a property with name "alias_names"'  create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasmissing -t alias -o address='122.122.54.54'
+
+# Create alias items with invalid params
+assertError --err_type ValidationError --err_property "address" --err_message "Invalid IP address value ''" create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasaddr1 -t alias -o address=  alias_names=alias-name
+assertError --err_type ValidationError --err_property "address" --err_message "Invalid IPAddress value '122.12'" create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasaddr2 -t alias -o address=122.12  alias_names=alias-name
+assertError --err_type PropertyNotAllowedError --err_property "addr" --err_message 'addr" is not an allowed property of alias' create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidaliasaddr3 -t alias -o addr=122.122.54.51  alias_names=alias-name
+assertError --err_type InvalidLocationError --err_message 'Path not found' remove -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/aliasinvalid
+assertError --err_type InvalidChildTypeError --err_message "alias-node-config' is not an allowed type for collection of item type 'cluster-config'" create -p /deployments/site1/clusters/cluster1/configs/config -t alias-node-config

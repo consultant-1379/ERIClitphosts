@@ -1,0 +1,12 @@
+
+litp create -p /deployments/local_vm -t deployment
+litp create -p /deployments/local_vm/clusters/cluster1 -t cluster
+litp create -p /deployments/local_vm/clusters/cluster1/configs/alias_config -t alias-cluster-config
+
+# Expecting no error for the value alias_names="alias1.com"
+litp create -p /deployments/local_vm/clusters/cluster1/configs/alias_config/aliases/master1 -t alias -o alias_names="alias1.com" address="11.11.11.1"
+
+# Expecting no error for the value alias_names="alias1.com,alias2.com"
+litp create -p /deployments/local_vm/clusters/cluster1/configs/alias_config/aliases/master2 -t alias -o alias_names="alias1.com,alias2.com" address="11.11.11.2"
+
+litp create -p /deployments/local_vm/clusters/cluster1/configs/alias_config/aliases/master3 -t alias -o alias_names="alias1.com,alias2.com,alias3.com" address="11.11.11.2"

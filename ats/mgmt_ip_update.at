@@ -1,0 +1,28 @@
+runLitpScript two-node-std.inc
+
+litp create_plan
+litp run_plan
+
+litp update -p /ms/network_interfaces/if0 -o ipaddress=10.4.23.60
+litp update -p /deployments/site1/clusters/cluster1/nodes/node1/network_interfaces/if0 -o ipaddress=10.4.23.61
+litp update -p /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 -o ipaddress=10.4.23.62
+
+litp create_plan
+
+assertTask 0 hosts::hostentry ms1 /ms/network_interfaces/if0
+assertTask 0 hosts::hostentry node1 /ms/network_interfaces/if0
+assertTask 0 hosts::hostentry node2 /ms/network_interfaces/if0
+
+assertTask 0 hosts::hostentry ms1 /deployments/site1/clusters/cluster1/nodes/node1/network_interfaces/if0
+assertTask 0 hosts::hostentry node1 /deployments/site1/clusters/cluster1/nodes/node1/network_interfaces/if0
+assertTask 0 hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node1/network_interfaces/if0
+
+assertTask 0 hosts::hostentry ms1 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0
+assertTask 0 hosts::hostentry node1 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0
+assertTask 0 hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0
+
+litp run_plan
+
+assertState -p /ms/network_interfaces/if0 Applied
+assertState -p /deployments/site1/clusters/cluster1/nodes/node1/network_interfaces/if0 Applied
+assertState -p /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 Applied

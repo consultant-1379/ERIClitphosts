@@ -1,0 +1,16 @@
+
+runLitpScript two-node-std.inc
+
+litp create -p /ms/configs/alias_config -t alias-node-config
+litp create -p /ms/configs/alias_config/aliases/master1 -t alias -o address="11.11.11.1" alias_names="master1,master2"
+
+litp create_plan
+
+assertConfigTask ms1 hosts::hostentry _ms1_master1 /ms/configs/alias_config/aliases/master1 ip=11.11.11.1 name="master1" host_aliases='["master2"]' ensure=present comment='Created by LITP. Please do not edit'
+
+litp run_plan
+
+assertState -p /ms/configs/alias_config/aliases/master1 Applied
+assertState -p /ms/configs/alias_config Applied
+
+assertDirectoryContents run_plan_hosts_alias_ms/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/

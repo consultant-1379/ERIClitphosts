@@ -1,0 +1,50 @@
+runLitpScript two-node-std.inc
+
+#create alias-node config config on the MS.
+litp create -t alias-node-config -p /ms/configs/alias_config
+
+#create an alias under an alias-node-config with an IPv6 address.
+litp create -t alias -p /ms/configs/alias_config/aliases/foo-ms-alias -o address=fdde:4d7e:d471:1::835:90:101 alias_names="foo-ms-alias"
+
+#create alias-cluster config.
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_config
+
+#create an alias under an alias-cluster-config with IPv6 address.
+litp create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias -o address=fdde:4d7e:d471:1::835:90:102 alias_names="foo-cluster-alias"
+
+assertState -p /ms/configs/alias_config/aliases/foo-ms-alias Initial
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias Initial
+
+litp create_plan
+litp run_plan
+
+#assert plan was successful and both aliases items are applied.
+assertPlanState successful
+assertState -p /ms/configs/alias_config/aliases/foo-ms-alias Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias Applied
+
+#update both aliases items to a different IPv6 address that contains a prefix.
+litp update -p /ms/configs/alias_config/aliases/foo-ms-alias -o address=fdde:4d7e:d471:1::835:90:103/128
+litp update -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias -o address=fdde:4d7e:d471:1::835:90:104/128
+
+litp create_plan
+
+assertConfigTask ms1 hosts::hostentry _ms1_foo-ms-alias /ms/configs/alias_config/aliases/foo-ms-alias ip=fdde:4d7e:d471:1::835:90:103 ensure=present name="foo-ms-alias" comment='Created by LITP. Please do not edit'
+assertNoConfigTask ms1 hosts::hostentry _ms1_foo-ms-alias /ms/configs/alias_config/aliases/foo-ms-alias ip=fdde:4d7e:d471:1::835:90:101 ensure=present name="foo-ms-alias" comment='Created by LITP. Please do not edit'
+assertConfigTask node1 hosts::hostentry cluster1_node1_foo-cluster-alias /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias ip=fdde:4d7e:d471:1::835:90:104 ensure=present name=foo-cluster-alias comment="Created by LITP. Please do not edit"
+assertNoConfigTask node1 hosts::hostentry cluster1_node1_foo-cluster-alias /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias ip=fdde:4d7e:d471:1::835:90:102 ensure=present name=foo-cluster-alias comment="Created by LITP. Please do not edit"
+assertConfigTask node2 hosts::hostentry cluster1_node2_foo-cluster-alias /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias ip=fdde:4d7e:d471:1::835:90:104 ensure=present name=foo-cluster-alias comment="Created by LITP. Please do not edit"
+assertNoConfigTask node2 hosts::hostentry cluster1_node2_foo-cluster-alias /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias ip=fdde:4d7e:d471:1::835:90:102 ensure=present name=foo-cluster-alias comment="Created by LITP. Please do not edit"
+
+litp run_plan
+
+#assert plan was successful and both aliases items are applied.
+assertPlanState successful
+assertState -p /ms/configs/alias_config/aliases/foo-ms-alias Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias Applied
+
+#TORF-352382 update both aliases items to the IPv6 address that contains a prefix
+litp update -p /ms/configs/alias_config/aliases/foo-ms-alias -o address=fdde:4d7e:d471:1::835:90:103/64
+litp update -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/foo-cluster-alias -o address=fdde:4d7e:d471:1::835:90:104/64
+
+assertError --err_type DoNothingPlanError --err_message 'no tasks were generated' create_plan

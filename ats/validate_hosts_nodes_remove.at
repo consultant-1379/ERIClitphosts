@@ -1,0 +1,20 @@
+
+runLitpScript two-node-std.inc
+litp create_plan
+litp run_plan
+
+# Remove node2
+litp remove -p /deployments/site1/clusters/cluster1/nodes/node2
+litp create_plan
+
+#show show_plan
+#show show -p /plans/plan/phases/2/tasks -r
+
+# Assert tasks created to remove the "node2" host entry
+assertConfigTask ms1   hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 \
+    ip=10.4.23.52 ensure=absent name=node2 comment='Created by LITP. Please do not edit'
+assertConfigTask node1 hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 \
+    ip=10.4.23.52 ensure=absent name=node2 comment='Created by LITP. Please do not edit'
+
+litp run_plan
+assertPlanState successful

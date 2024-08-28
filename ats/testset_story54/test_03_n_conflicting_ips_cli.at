@@ -1,0 +1,26 @@
+## Creates invalid aliases with Duplicate alias_name
+
+runLitpScript two-node-std.inc
+
+#create alias-cluster config
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_config
+
+#create two aliases with the same alias_name
+litp create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper -o address=122.122.54.53 alias_names="paper-service"
+litp create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper_2 -o address=122.122.54.153 alias_names="paper-service"
+
+#assert ValidationError for duplicate alias_name
+let __err_a --err_type ValidationError --err_property "alias_name" --err_message "Create plan failed: Duplicate alias for paper-service found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper, /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper_2" --err_vpath "/deployments/site1/clusters/cluster1/nodes/node1"
+let __err_b --err_type ValidationError --err_property "alias_name" --err_message "Create plan failed: Duplicate alias for paper-service found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper, /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper_2" --err_vpath "/deployments/site1/clusters/cluster1/nodes/node2"
+
+assertError __err_a __err_b create_plan
+
+#Update both alias items to have twin alias names, a duplicate in each name
+litp update -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper -o alias_names='paper-service,rock-service'
+litp update -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper_2 -o alias_names='paper-service,scissors-service'
+
+#assert ValidationError for duplicate alias_name
+let __err_a --err_type ValidationError --err_property "alias_name" --err_message "Create plan failed: Duplicate alias for paper-service found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper, /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper_2" --err_vpath "/deployments/site1/clusters/cluster1/nodes/node1"
+let __err_b --err_type ValidationError --err_property "alias_name" --err_message "Create plan failed: Duplicate alias for paper-service found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper, /deployments/site1/clusters/cluster1/configs/alias_config/aliases/paper_2" --err_vpath "/deployments/site1/clusters/cluster1/nodes/node2"
+
+assertError __err_a __err_b create_plan

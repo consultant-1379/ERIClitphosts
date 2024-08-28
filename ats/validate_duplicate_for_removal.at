@@ -1,0 +1,24 @@
+runLitpScript two-node-std.inc
+
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_test4_new
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_test4_new/aliases/alias2 -t alias -o alias_names="alias.new1" address="fdde:4d7e:d471::837:90:178"
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_test4_new/aliases/alias3 -t alias -o alias_names="alias.new2" address="10.10.10.12"
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_test4_new/aliases/alias4 -t alias -o alias_names="alias.new3" address="fdde:4d7e:d471::837:90:179"
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_test4_new/aliases/alias5 -t alias -o alias_names="alias.new4" address="10.10.10.14"
+
+litp create_plan
+
+litp run_plan
+
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_test4_new Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_test4_new/aliases/alias2 Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_test4_new/aliases/alias3 Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_test4_new/aliases/alias4 Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_test4_new/aliases/alias5 Applied
+
+litp remove -p /deployments/site1/clusters/cluster1/configs/alias_test4_new
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_test5_new
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_test5_new/aliases/alias2 -t alias -o alias_names="alias.new1" address="fdde:4d7e:d471::837:90:188"
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_test5_new/aliases/alias4 -t alias -o alias_names="alias.new3" address="fdde:4d7e:d471::837:90:189"
+
+assertError --err_message "Duplicate alias for alias.new3 found at" create_plan

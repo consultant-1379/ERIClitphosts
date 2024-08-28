@@ -1,0 +1,38 @@
+# Recreated Hosts Tasks Succeed In Post-Fail Plan
+
+# Setup
+runLitpScript two-node-std.inc
+litp create_plan
+litp run_plan
+
+# Create a new alias
+litp create -p /deployments/site1/clusters/cluster1/nodes/node1/configs/alias_config -t alias-node-config
+litp create -p /deployments/site1/clusters/cluster1/nodes/node1/configs/alias_config/aliases/master5 -t alias -o address="11.11.11.1" alias_names="master5"
+
+# Remove node2
+litp remove -p /deployments/site1/clusters/cluster1/nodes/node2
+litp create_plan
+#show show_plan
+
+# Assert tasks created to remove the "node2" host entry
+assertConfigTask ms1   hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 \
+    ip=10.4.23.52 ensure=absent name=node2 comment='Created by LITP. Please do not edit'
+assertConfigTask node1 hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 \
+    ip=10.4.23.52 ensure=absent name=node2 comment='Created by LITP. Please do not edit'
+
+# Fail task outside the node host entries
+failConfigTask hosts::hostentry node1 /deployments/site1/clusters/cluster1/nodes/node1/configs/alias_config/aliases/master5
+litp run_plan
+#show show_plan
+assertPlanState failed
+
+# Recreate plan and verify no node host exist but it completes successfully
+litp create_plan
+#show show_plan
+assertNoConfigTask ms1   hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 \
+    ip=10.4.23.52 ensure=absent name=node2 comment='Created by LITP. Please do not edit'
+assertNoConfigTask node1 hosts::hostentry node2 /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0 \
+    ip=10.4.23.52 ensure=absent name=node2 comment='Created by LITP. Please do not edit'
+assertNone -p /deployments/site1/clusters/cluster1/nodes/node2/network_interfaces/if0
+litp run_plan
+assertPlanState successful

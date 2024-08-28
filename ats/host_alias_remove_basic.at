@@ -1,0 +1,27 @@
+
+runLitpScript two-node-std.inc
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master -t alias -o alias_names="master1" address="11.11.11.1"
+
+litp create_plan
+
+assertConfigTask node1 hosts::hostentry cluster1_node1_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master ip=11.11.11.1 ensure="present" name="master1" comment="Created by LITP. Please do not edit"
+assertConfigTask node2 hosts::hostentry cluster1_node2_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master ip=11.11.11.1 ensure="present" name="master1" comment="Created by LITP. Please do not edit" 
+
+litp run_plan
+
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master Applied
+
+# Update only cluster1 to point at different master alias
+litp remove -p /deployments/site1/clusters/cluster1/configs/alias_config
+
+litp create_plan
+
+assertConfigTask node1 hosts::hostentry cluster1_node1_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master ip=11.11.11.1 ensure=absent name="master1" comment="Created by LITP. Please do not edit"
+assertConfigTask node2 hosts::hostentry cluster1_node2_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master ip=11.11.11.1 ensure=absent name="master1" comment="Created by LITP. Please do not edit"
+
+litp run_plan
+
+assertDirectoryContents run_plan_hosts_alias_remove_basic/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/

@@ -1,0 +1,32 @@
+
+runLitpScript two-node-std.inc
+
+# create a firewall rule on a cluster
+litp create -p /deployments/site1/clusters/cluster1/configs/masteralias -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster1/configs/masteralias/aliases/master1 -t alias -o address=11.11.11.1 alias_names=master1
+
+litp create_plan
+
+assertConfigTask node1 hosts::hostentry cluster1_node1_master1 /deployments/site1/clusters/cluster1/configs/masteralias/aliases/master1 ip="11.11.11.1" ensure="present" name="master1" comment="Created by LITP. Please do not edit" 
+assertConfigTask node2 hosts::hostentry cluster1_node2_master1 /deployments/site1/clusters/cluster1/configs/masteralias/aliases/master1 ip="11.11.11.1" ensure="present" name="master1" comment="Created by LITP. Please do not edit" 
+
+litp run_plan
+
+# add another node to the cluster
+litp create -p /infrastructure/systems/system3 -t system -o system_name='MN3VM'
+
+litp create -p /deployments/site1/clusters/cluster1/nodes/node3 -t node -o hostname='node3'
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/system -s /infrastructure/systems/system3
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/os -s /software/profiles/rhel_6
+litp create -t network-interface -p /deployments/site1/clusters/cluster1/nodes/node3/network_interfaces/if0 -o network_name='nodes' ipaddress=10.4.23.53
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+
+litp create_plan
+litp run_plan
+
+assertNoConfigTask node1 hosts::hostentry cluster1_node1_master1 /deployments/site1/clusters/cluster1/configs/masteralias/aliases/master1
+assertNoConfigTask node2 hosts::hostentry cluster1_node2_master1 /deployments/site1/clusters/cluster1/configs/masteralias/aliases/master1
+assertConfigTask node3 hosts::hostentry cluster1_node3_master1 /deployments/site1/clusters/cluster1/configs/masteralias/aliases/master1 ip="11.11.11.1" ensure="present" name="master1" comment="Created by LITP. Please do not edit"
+
+assertState -p /deployments/site1/clusters/cluster1/configs/masteralias Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/masteralias/aliases/master1 Applied

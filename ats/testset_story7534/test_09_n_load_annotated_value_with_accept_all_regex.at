@@ -1,0 +1,9 @@
+## This tests a ValidationError is thrown when an invalid service alias is loaded into the model
+
+runLitpScript two-node-std.inc
+
+#create alias cluster config
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_config
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/exportalias -t alias -o address='122.122.54.56' alias_names='exportalias'
+assertError --err_type ValidationError --err_property "address" --err_message "Invalid IP address value '%%SITE_SPECIFIC%%'" load -p  /deployments/site1/clusters/cluster1/configs/alias_config/aliases -f test1.xml

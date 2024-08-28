@@ -1,0 +1,35 @@
+runLitpScript two-node-std.inc
+
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_configuration
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-5-map-service_alias -t alias -o alias_names="svc-5-map-service,map-service-1-internal" address="192.168.1.89"
+
+litp create_plan
+assertConfigTask node1 hosts::hostentry cluster1_node1_svc-5-map-service /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-5-map-service_alias comment='Created by LITP. Please do not edit' ip='192.168.1.89' host_aliases='["map-service-1-internal"]' ensure='present' name='svc-5-map-service'
+assertConfigTask node2 hosts::hostentry cluster1_node2_svc-5-map-service /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-5-map-service_alias comment='Created by LITP. Please do not edit' ip='192.168.1.89' host_aliases='["map-service-1-internal"]' ensure='present' name='svc-5-map-service'
+litp run_plan
+
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_configuration Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-5-map-service_alias Applied
+
+# Remove and re-create the alias item
+litp remove -p /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-5-map-service_alias
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-7-map-service_alias -t alias -o alias_names="svc-7-map-service,map-service-1-internal" address="192.168.1.89"
+
+# Cluster expanded with 1 new node
+
+litp create -t system -p /infrastructure/systems/sys3 -o system_name='sys3'
+litp create -t node -p /deployments/site1/clusters/cluster1/nodes/node3 -o hostname='node3'
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/system -s /infrastructure/systems/sys3
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/os -s /software/profiles/rhel_6
+litp inherit -p /deployments/site1/clusters/cluster1/nodes/node3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp create -t network-interface -p /deployments/site1/clusters/cluster1/nodes/node3/network_interfaces/if0 -o ipaddress='10.4.23.53' network_name='nodes'
+
+litp create_plan
+
+assertConfigTask node1 hosts::hostentry cluster1_node1_svc-7-map-service /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-7-map-service_alias comment='Created by LITP. Please do not edit' ip='192.168.1.89' host_aliases='["map-service-1-internal"]' ensure='present' name='svc-7-map-service'
+assertConfigTask node2 hosts::hostentry cluster1_node2_svc-7-map-service /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-7-map-service_alias comment='Created by LITP. Please do not edit' ip='192.168.1.89' host_aliases='["map-service-1-internal"]' ensure='present' name='svc-7-map-service'
+assertConfigTask node3 hosts::hostentry cluster1_node3_svc-7-map-service /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-7-map-service_alias comment='Created by LITP. Please do not edit' ip='192.168.1.89' host_aliases='["map-service-1-internal"]' ensure='present' name='svc-7-map-service'
+
+assertConfigTask node1 hosts::hostentry cluster1_node1_svc-5-map-service /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-5-map-service_alias comment='Created by LITP. Please do not edit' ip='192.168.1.89' host_aliases='["map-service-1-internal"]' ensure='absent' name='svc-5-map-service'
+assertConfigTask node2 hosts::hostentry cluster1_node2_svc-5-map-service /deployments/site1/clusters/cluster1/configs/alias_configuration/aliases/svc-5-map-service_alias comment='Created by LITP. Please do not edit' ip='192.168.1.89' host_aliases='["map-service-1-internal"]' ensure='absent' name='svc-5-map-service'
+litp run_plan

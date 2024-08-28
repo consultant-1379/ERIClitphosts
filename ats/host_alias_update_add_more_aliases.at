@@ -1,0 +1,23 @@
+
+runLitpScript two-node-std.inc
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config -t alias-cluster-config
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 -t alias -o alias_names="master1,master2" address="11.11.11.1"
+
+litp create_plan
+litp run_plan
+
+
+litp update -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 -o alias_names="master1,master2,master3"
+
+litp create_plan
+
+assertNoConfigTask node1 hosts::hostentry cluster1_node1_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 ip=11.11.11.1 ensure=absent
+assertConfigTask node1 hosts::hostentry cluster1_node1_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 ip=11.11.11.1 ensure=present name=master1 host_aliases='["master2","master3"]' comment="Created by LITP. Please do not edit"
+assertNoConfigTask node2 hosts::hostentry cluster1_node2_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 ip=11.11.11.1 ensure=absent comment="Created by LITP. Please do not edit"
+assertConfigTask node2 hosts::hostentry cluster1_node2_master1 /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 ip=11.11.11.1 ensure=present name=master1 host_aliases='["master2","master3"]' comment="Created by LITP. Please do not edit"
+
+litp run_plan
+
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/master1 Applied

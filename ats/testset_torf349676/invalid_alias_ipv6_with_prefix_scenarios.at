@@ -1,0 +1,13 @@
+runLitpScript two-node-std.inc
+
+# create alias-node config config on the MS.
+litp create -t alias-node-config -p /ms/configs/alias_config
+
+# create alias-cluster config.
+litp create -t alias-cluster-config -p /deployments/site1/clusters/cluster1/configs/alias_config
+
+# create an alias with invalid addresses and assert ValidationError
+assertError --err_type ValidationError --err_message "Invalid IP address value 'fdde:4d7e:d471:1::835:90:102-64'" create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidClusterAlias -o address=fdde:4d7e:d471:1::835:90:102-64 alias_names="invalid-cluster-alias"
+assertError --err_type ValidationError --err_message "Invalid IP address value 'fdde:4d7e:d471:1::835:90:102:64'" create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidClusterAlias -o address=fdde:4d7e:d471:1::835:90:102:64 alias_names="invalid-cluster-alias"
+assertError --err_type ValidationError --err_message "IPv6 address 'fdde:4d7e:d471:1::835:90:102/123456789' is not valid" create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidClusterAlias -o address=fdde:4d7e:d471:1::835:90:102/123456789 alias_names="invalid-cluster-alias"
+assertError --err_type ValidationError --err_message "Invalid IPAddress value '192.168.0.42/64'" create -t alias -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/invalidClusterAlias -o address=192.168.0.42/64 alias_names="invalid-cluster-alias"

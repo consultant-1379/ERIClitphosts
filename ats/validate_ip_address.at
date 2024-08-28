@@ -1,0 +1,5 @@
+
+runLitpScript two-node-std.inc
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config -t alias-cluster-config
+assertError --err_message "Invalid IPAddress value '11.11'" create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1 -t alias -o address="11.11" alias_names="master1,master2"

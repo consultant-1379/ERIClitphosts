@@ -1,0 +1,7 @@
+
+runLitpScript two-node-std.inc
+
+litp create_plan
+litp run_plan
+
+assertDirectoryContents run_plan_hosts/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/

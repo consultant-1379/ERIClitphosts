@@ -1,0 +1,25 @@
+
+runLitpScript two-node-std.inc
+
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config -t alias-cluster-config
+
+# Invalid as it uses localhost
+litp create -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1 -t alias -o address="11.11.11.1" alias_names="localhost"
+assertError --err_message 'Restricted alias name "localhost" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1' create_plan
+
+# Invalid as it uses hostname of MS
+litp update -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1 -o address="11.11.11.1" alias_names="ms1"
+assertError --err_message 'Restricted alias name "ms1" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1' create_plan
+
+# Invalid as it uses hostname of the node it's on
+litp update -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1 -o address="11.11.11.1" alias_names="node1"
+assertError --err_message 'Restricted alias name "node1" found at /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1' create_plan
+
+
+# Valid
+litp update -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1 -o alias_names="ok.com"
+litp create_plan
+
+litp run_plan
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config Applied
+assertState -p /deployments/site1/clusters/cluster1/configs/alias_config/aliases/alias1 Applied
